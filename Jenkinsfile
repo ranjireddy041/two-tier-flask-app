@@ -1,40 +1,46 @@
 pipeline {
     agent any
 	
-		tools{
-		maven 'maven3'
-	}
+	tools {
+        sonarQubeScanner 'sonar-scanner'
+    }
 
     stages {
         stage('checkout') {
             steps {
                 echo 'code checkout from github'
-				git branch: 'main', url: 'https://github.com/ranjireddy041/two-tier-flask-app.git
+				git branch: 'master', url: 'https://github.com/ranjireddy041/two-tier-flask-app.git
             }
         }
 		
-		stage('scannig'){
-			steps{
-			 echo ' scanning the project code'
-			 sh 'ls -ltr'
-			 sh ''' mvn sonar:sonar \\
-						-Dsonar.host.url=http://54.85.108.8:9000 \\
-						-Dsonar.login=squ_a51dc249be8695b08004eb7c1ad2c3f058a7f470 '''
-			}
-		}
-		stage ('build Artifact'){
-			steps {
-					echo ' builing artifact'
-					sh 'mvn clean package'
-			}
+		 stage('Install Dependencies') {
+            steps {
+                echo 'Installing Python dependencies'
+                sh '''
+                python3 -m venv venv
+                source venv/bin/activate
+                pip install -r requirements.txt
+                '''
+            }
 		}	
-			
-		stage ('docker image') {
-				steps{
-					echo ' building the docker image'
-					sh 'docker build -t ranjidokcerhub/flaskapp:${BUILD_NUMBER} . '
-				}
-		}
+		stage('SonarQube Scan') {
+            steps {
+                echo 'Scanning Python project'
+                sh '''
+                sonar-scanner \
+                -Dsonar.projectKey=flaskapp \
+                -Dsonar.sources=. \
+                -Dsonar.host.url=http://54.85.108.8:9000 \
+                -Dsonar.login=squ_a51dc249be8695b08004eb7c1ad2c3f058a7f470
+                '''
+            }
+        } 	
+		stage('Build Docker Image') {
+            steps {
+                echo 'Building Docker image'
+                sh 'docker build -t ranjidockerhub/flaskapp:${BUILD_NUMBER} .'
+            }
+        }
 		stage('push to docker hubrepo'){
 			steps{
 				echo 'push to docker hub repo'
@@ -59,9 +65,9 @@ pipeline {
 					sh ''' git config user.email " ranji.reddy@gmail.com"
 							 git config user.name "ranjeeth"
 							 BUILD_NUMBER=${BUILD_NUMBER}
-							 sed -i "s/flaskapp:.*/flaskapp:${BUILD_NUMBER}/g" deployment/deployment.yaml
+							 sed -i "s/flaskapp:.*/flaskapp:${BUILD_NUMBER}/g" deploymentfile/deployment.yaml
 							 git add .
-							 git commit -m "update deployment image to the version ${BUILD_NUMBER}"
+							 git commit -m "update flaskapp deployment image to the version ${BUILD_NUMBER}"
 							 git push https://${github}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD: main '''
 							 
 					}	
