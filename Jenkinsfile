@@ -24,17 +24,18 @@ pipeline {
             }
 		}	
 		stage('SonarQube Scan') {
-            steps {
-                echo 'Scanning Python project'
-                sh '''
-                sonar-scanner \
-                -Dsonar.projectKey=flaskapp \
-                -Dsonar.sources=. \
-                -Dsonar.host.url=http://54.85.108.8:9000 \
-                -Dsonar.login=squ_a51dc249be8695b08004eb7c1ad2c3f058a7f470
-                '''
-            }
-        } 	
+    steps {
+        withSonarQubeEnv('sonarqube-server') {
+            sh '''
+            sonar-scanner \
+            -Dsonar.projectKey=flaskapp \
+            -Dsonar.sources=. \
+            -Dsonar.host.url=http://54.85.108.8:9000 \
+            -Dsonar.login=squ_a51dc249be8695b08004eb7c1ad2c3f058a7f470
+            '''
+        }
+    }
+}	
 		stage('Build Docker Image') {
             steps {
                 echo 'Building Docker image'
